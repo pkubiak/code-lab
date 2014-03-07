@@ -1,7 +1,9 @@
 # ytmp3.sh #
 
 Simple script to extract mp3 audio from youtube clips. 
-It depends on youtube-dl (http://rg3.github.io/youtube-dl/).
+It depends on youtube-dl (http://rg3.github.io/youtube-dl/), ffmpeg and mplayer.
+Audio is saved into files with names reflecting clip title.
+
 
 #### Options ####
 
