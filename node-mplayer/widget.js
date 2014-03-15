@@ -157,6 +157,7 @@ Widget.ItemList = function(){
 	this.redraw = function(){
 		var size = this.getSizeRequest();
 		var cols = columnSize(), y = allocation[1], x = allocation[0], yt = y+allocation[3];
+		var width = allocation[2];
 		
 		if(config['fill-space'] !== false){
 			var underflow = allocation[2]-size[0];
@@ -175,11 +176,12 @@ Widget.ItemList = function(){
 			}
 		}
 		
-		var out = [];
+		var outM = [];
 		if(config['show-header']){
 			if(y<yt){
-				out.push('\033['+y+';'+x+'H');y+=1;
+				outM.push('\033['+y+';'+x+'H');y+=1;
 				var l = 0;
+				var out = []
 				for(var i=0;i<cols.length;i++){
 					if(i>0)out.push(config['column-separator']);
 					out.push(zfill('', config['padding-left'], ' '));
@@ -188,20 +190,23 @@ Widget.ItemList = function(){
 					out.push(zfill('', config['padding-right'], ' '));
 					l+=cols[i];
 				}
+				outM.push(out.join('').substr(0, width));
 			}
 			if(y<yt){
-				out.push('\033['+y+';'+x+'H');y+=1;
+				outM.push('\033['+y+';'+x+'H');y+=1;
+				var out = []
 				for(var i=0;i<cols.length;i++){
 					if(i>0)out.push(config['cross-separator']);
 					out.push(zfill('', config['padding-left']+config['padding-right']+cols[i], config['header-separator']));
 				}
+				outM.push(out.join('').substr(0, width));
 			}
 		}
 		
 		for(var s=0;s<store.length;s++){
 			if(y < yt){
-				out.push('\033['+y+';'+x+'H');y+=1;
-				
+				outM.push('\033['+y+';'+x+'H');y+=1;
+				var out = []
 				for(var i=0;i<cols.length;i++){
 					if(i>0)out.push(config['column-separator']);
 					out.push(zfill('', config['padding-left'], ' '));
@@ -210,11 +215,12 @@ Widget.ItemList = function(){
 					);
 					out.push(zfill('', config['padding-right'], ' '));
 				}
+				outM.push(out.join('').substr(0, width));
 			}else break;
 		}
 		
 		
-		process.stdout.write(out.join(''));
+		process.stdout.write(outM.join(''));
 		process.stdout.write('\n');
 	}
 	
@@ -307,6 +313,68 @@ Widget.ItemList = function(){
 	}
 }
 
+Widget.GridLayout = function(width, height){
+	
+	var config = {
+		'allow-overlap' : true,
+		'show-grid' : false
+	}
+	
+	var allocation = [0,0,0,0];
+	var gWidth = width, gHeight = height;
+	var widgets = [];
+	
+	//return position of `i`'th element if space of size `size` is equaly divided into `n` pieces 
+	var getPos = function(size, n, i){
+		var perCell = Math.floor(size / n), res = size%n;
+		return perCell*i+(i<res?i:res);
+	}
+	
+	var allocate = function(widget){
+		var x0 = getPos(allocation[2], gWidth, widget.x), y0 = getPos(allocation[3], gHeight, widget.y);
+		var x1 = getPos(allocation[2], gWidth, widget.x+widget.width), y1 = getPos(allocation[3], gHeight, widget.y+widget.height);
+			
+		widget.widget.setAllocation(x0+allocation[0], y0+allocation[1], x1-x0, y1-y0);
+	}
+	
+	this.setAllocation = function(x, y, width, height){
+		allocation = [x,y,width,height];
+		Object.freeze(allocation);
+		
+		for(var i = 0; i < widgets.length; i++)
+			allocate(widgets[i]);
+	}
+
+	this.getAllocation = function(){
+		return allocation;
+	}
+	
+	this.redraw = function(){
+		for(var i = 0;i < widgets.length; i++)
+			widgets[i].widget.redraw();
+	}
+	this.unpack = function(widget){
+		for(var i=0;i<widgets.length;i++)
+			if(widgets[i].widget === widget){
+				widgets.splice(i, 1);//remove widget from list
+				return true;
+			}
+		return false;
+	}
+	this.pack = function(widget, x, y, width, height){
+		assert((x<gWidth&&y<gHeight&&x+width<=gWidth&&y+height<=gHeight), "Widget doesn't fit in the grid");
+
+		this.unpack(widget);
+		
+		var n = widgets.push({
+			widget: widget, x: x, y: y, width: width, height: height
+		});
+		
+		allocate(widgets[n-1]);
+		
+		this.redraw();
+	}
+}
 
 module.exports = Widget;
 

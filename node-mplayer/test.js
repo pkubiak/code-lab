@@ -161,8 +161,8 @@ process.stdin.on('data', function(data){
 		//drawWindow(5,5,terminal_width-10, terminal_height-10, "hello World");
 		drawWindow(0.1, 0.1, 0.8, 0.8, ""+terminal_width+"x"+terminal_height);
 		
-		list.setAllocation(parseInt(0.1*terminal_width)+2, parseInt(0.1*terminal_height)+2, parseInt(0.8*terminal_width)-2, parseInt(0.8*terminal_height)-2);
-		list.redraw();
+		gridLayout.setAllocation(parseInt(0.1*terminal_width)+2, parseInt(0.1*terminal_height)+2, parseInt(0.8*terminal_width)-2, parseInt(0.8*terminal_height)-2);
+		gridLayout.redraw();
 		
 		////console.log('WIDTH: '+parseInt(x[2])+'; HEIGHT: '+parseInt(x[1]));
 	}
@@ -181,18 +181,19 @@ function drawWindow(x, y, width, height, title){
 	height = parseInt(height*terminal_height);
 	//console.log(x,y,width,height);
 	
+	var col = 32;
 	for(var i=y;i<y+height;i++){
 		var t = [];
 		t.push('\033['+i+';'+x+'H');
 		if(i==y){
-			t.push('╭╼');t.push(title.substr(0,width-4));t.push('╾')
+			t.push('\033['+col+'m╭╼\033[0m');t.push(title.substr(0,width-4));t.push('\033['+col+'m╾')
 			
-			t.push(repeatChar('─', width-4-title.length));t.push('╮');
+			t.push(repeatChar('─', width-4-title.length));t.push('╮\033[0m');
 		}else
 		if(i+1==y+height){
-			t.push('╰');t.push(repeatChar('─', width-2));t.push('╯');
+			t.push('\033['+col+'m╰');t.push(repeatChar('─', width-2));t.push('╯\033[0m');
 		}else{
-			t.push('│');t.push(repeatChar(' ', width-2));t.push('│');
+			t.push('\033['+col+'m│\033[0m');t.push(repeatChar(' ', width-2));t.push('\033['+col+'m│\033[0m');
 		}
 		process.stdout.write(t.join(''));
 	}
@@ -223,6 +224,7 @@ process.on('exit', function(){
 
 //drawWindow(5,1,50,10,' Lyric: Zaho - Allô ');
 
+
 var list = new Widget.ItemList('int', 'string', 'time', 'boolean');
 list.setProperty('show-header', true);
 
@@ -252,4 +254,8 @@ list.getRenderer(3).setProperty('true-value', '✔');
 list.getRenderer(3).setProperty('false-value', '✘');
 list.getRenderer(3).setProperty('wrong-value', '---');
 
+
+var gridLayout = new Widget.GridLayout(5, 4);
+
+gridLayout.pack(list, 0, 0, 4, 3);
 
