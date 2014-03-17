@@ -116,6 +116,8 @@ process.stdin.on('keypress', function (ch, key) {
 	  mplayer.kill('SIGKILL');
 	  process.exit(0);
   }
+  if(ch=='g'){gridLayout.setProperty('show-grid', false);}
+  if(ch=='G'){gridLayout.setProperty('show-grid', true);}
   if(ch=='p')pause();
 });
 
@@ -254,8 +256,14 @@ list.getRenderer(3).setProperty('true-value', '✔');
 list.getRenderer(3).setProperty('false-value', '✘');
 list.getRenderer(3).setProperty('wrong-value', '---');
 
+var scrollArea = new Widget.ScrollArea();
+
+var textArea = new Widget.TextArea();
+scrollArea.pack(textArea);
+textArea.setText("I got chills, they're multiplyin', and I'm losin' control\nCause the power you're supplyin', it's electrifyin'\n\nYou better shape up, cause I need a man,\nand my heart is set on you\nYou better shape up, you better understand,\nto my heart I must be true\nNothing left, nothing left for me to do\n\nYou're the one that I want (you are the one I want),\nooh ooh ooh, honey\nThe one that I want (you are the one I want),\nooh ooh ooh, honey\nThe one that I want (you are the one I want),\nooh ooh ooh\nThe one I need (the one I need),\noh yes indeed (yes indeed)\n\nIf you're filled with affection,\nYou're too shy to convey\nMeditate my direction, feel your way\n\nI better shape up,\ncause you need a man\nI need a man,\nWho can keep me satisfied\nI better shape up, if I'm gonna prove\nYou better prove, that my fate is justified\nAre you sure?\nYes I'm sure down deep inside\n\nYou're the one that I want (you are the one I want),\nooh ooh ooh, honey\nThe one that I want (you are the one I want),\nooh ooh ooh, honey\nThe one that I want (you are the one I want),\nooh ooh ooh\nThe one I need (the one I need),\noh yes indeed (yes indeed)\n\nYou're the one that I want (you are the one I want),\nooh ooh ooh, honey\nThe one that I want (you are the one I want),\nooh ooh ooh, honey\nThe one that I want (you are the one I want),\nooh ooh ooh\nThe one I need (the one I need),\noh yes indeed (yes indeed)\n\nYou're the one that I want (you are the one I want),\nooh ooh ooh, honey\nThe one that I want (you are the one I want),\nooh ooh ooh, honey\nThe one that I want (you are the one I want),\nooh ooh ooh\nThe one I need (the one I need),\noh yes indeed (yes indeed)");
 
 var gridLayout = new Widget.GridLayout(5, 4);
 
-gridLayout.pack(list, 0, 0, 4, 3);
+gridLayout.pack(list, 1, 1, 2, 2);
+gridLayout.pack(scrollArea, 3, 0, 2, 2);
 

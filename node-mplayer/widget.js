@@ -16,6 +16,13 @@ function zfill(t, n, c){
 	return r.join('');
 }
 
+function clearRect(x,y,width,height,c){
+	if(c == undefined) c = 'x';
+	
+	//process.stdout.write('\033['+(c.charCodeAt(0))+';'+y+';'+x+';'+(y+height-1)+';'+(x+width-1)+'$x');
+	process.stdout.write('\033['+y+';'+x+';'+(y+height-1)+';'+(x+width-1)+'$z');
+}
+
 function fillWithAligment(t, tlen, len, align, c){
 	if(c == undefined)
 		c = ' ';
@@ -316,13 +323,18 @@ Widget.ItemList = function(){
 Widget.GridLayout = function(width, height){
 	
 	var config = {
-		'allow-overlap' : true,
-		'show-grid' : false
+		'allow-overlap' : false,
+		'show-grid' : true
 	}
 	
 	var allocation = [0,0,0,0];
 	var gWidth = width, gHeight = height;
 	var widgets = [];
+	var areas = [];
+	
+	for(var i=0;i<gHeight;i++){
+		areas.push(new Array(gWidth));
+	}
 	
 	//return position of `i`'th element if space of size `size` is equaly divided into `n` pieces 
 	var getPos = function(size, n, i){
@@ -333,7 +345,12 @@ Widget.GridLayout = function(width, height){
 	var allocate = function(widget){
 		var x0 = getPos(allocation[2], gWidth, widget.x), y0 = getPos(allocation[3], gHeight, widget.y);
 		var x1 = getPos(allocation[2], gWidth, widget.x+widget.width), y1 = getPos(allocation[3], gHeight, widget.y+widget.height);
-			
+		
+		if(config['show-grid']){
+			if(widget.y+widget.height<gHeight)y1--;
+			if(widget.x+widget.width<gWidth)x1--;
+		}
+		
 		widget.widget.setAllocation(x0+allocation[0], y0+allocation[1], x1-x0, y1-y0);
 	}
 	
@@ -350,29 +367,173 @@ Widget.GridLayout = function(width, height){
 	}
 	
 	this.redraw = function(){
+		clearRect(allocation[0], allocation[1], allocation[2], allocation[3]);
+		
+		if(config['show-grid']){
+			var out = ['\033[33m'];
+			//var cross = {0: ' ', 1: '!', 2: '!', 3: '┘', 4: '!', 5: '─', 6: '└', 7: '┴', 8: '!', 9: '┐', 10: '│', 11: '┤', 12: '┌', 13: '┬', 14: '├', 15: '┼'};
+			var cross = {0: ' ', 1: '!', 2: '!', 3: '╯', 4: '!', 5: '─', 6: '╰', 7: '┴', 8: '!', 9: '╮', 10: '│', 11: '┤', 12: '╭', 13: '┬', 14: '├', 15: '┼'};
+			
+			for(var y=1;y<gHeight;y++){
+				out.push('\033['+(getPos(allocation[3], gHeight, y)-1+allocation[1])+';'+allocation[0]+'H');
+				for(var x=0;x<gWidth;x++){
+					var d = Math.max(getPos(allocation[2], gWidth, x+1)-getPos(allocation[2], gWidth, x)-(x+1<gWidth?1:0), 0);
+					
+					if(areas[y-1][x] != areas[y][x])
+						out.push(zfill('', d, '─'));
+					else out.push(zfill('', d, ' '));
+					if(x+1<gWidth){
+						var sum = 0;
+						sum += areas[y-1][x] != areas[y][x] ? 1: 0;//left
+						sum += areas[y-1][x] != areas[y-1][x+1] ? 2: 0;//top
+						sum += areas[y-1][x+1] != areas[y][x+1] ? 4: 0;//right
+						sum += areas[y][x] != areas[y][x+1] ? 8: 0;//bottom
+						out.push(cross[sum]);
+					}
+				}
+			}
+			for(var y=0;y<gHeight;y++)
+				for(var x=1;x<gWidth;x++)
+					if(areas[y][x-1]!=areas[y][x])
+						for(var yy = getPos(allocation[3], gHeight, y); yy<getPos(allocation[3],gHeight, y+1)-(y+1<gHeight?1:0); yy++)
+							out.push('\033['+(yy+allocation[1])+';'+(allocation[0]+getPos(allocation[2], gWidth,x)-1)+'H│');
+					
+			
+			/*for(var y=0;y<allocation[3];y++)
+				for(var i=1;i<gWidth;i++){
+					var x = getPos(allocation[2], gWidth, i)-1+allocation[0];
+					out.push('\033['+(y+allocation[1])+';'+x+'H│');
+				}
+				*/
+			/*for(var i = 1;i<gHeight; i++){
+				var y = getPos(allocation[3], gHeight, i)-1+allocation[1];
+				out.push('\033['+y+';'+allocation[0]+'H');
+				out.push(l);
+			}
+
+			for(var y=0;y<allocation[3];y++)
+				for(var i=1;i<gWidth;i++){
+					var x = getPos(allocation[2], gWidth, i)-1+allocation[0];
+					out.push('\033['+(y+allocation[1])+';'+x+'H│');
+				}
+				*/
+			out.push('\033[0m');
+			process.stdout.write(out.join(''));
+		}
+		
 		for(var i = 0;i < widgets.length; i++)
 			widgets[i].widget.redraw();
 	}
 	this.unpack = function(widget){
 		for(var i=0;i<widgets.length;i++)
 			if(widgets[i].widget === widget){
+				for(var x=0;x<widgets[i].width;x++)
+					for(var y=0;y<widgets[i].height;y++)
+						areas[widgets[i].y+y][widgets[i].x+x] = undefined;
+
 				widgets.splice(i, 1);//remove widget from list
 				return true;
 			}
 		return false;
 	}
 	this.pack = function(widget, x, y, width, height){
-		assert((x<gWidth&&y<gHeight&&x+width<=gWidth&&y+height<=gHeight), "Widget doesn't fit in the grid");
+		assert((x<gWidth&&y<gHeight&&x+width<=gWidth&&y+height<=gHeight&&width>0&&height>0), "Widget doesn't fit in the grid");
 
 		this.unpack(widget);
+		
+		for(var i=0;i<width;i++)
+			for(var j=0;j<height;j++)
+				assert(areas[y+j][x+i] == undefined, "Widget overlap with existent widget");
 		
 		var n = widgets.push({
 			widget: widget, x: x, y: y, width: width, height: height
 		});
 		
+		for(var i=0;i<width;i++)
+			for(var j=0;j<height;j++)
+				areas[y+j][x+i] = n-1;
+		
+		
 		allocate(widgets[n-1]);
 		
 		this.redraw();
+	}
+	
+	this.setProperty = function(name, value){
+		//TODO: value validation
+		if(config.hasOwnProperty(name)){
+			config[name] = value;
+			if(name == 'show-grid'){
+				for(var i = 0; i < widgets.length; i++)
+					allocate(widgets[i]);
+				this.redraw();
+			}
+		}
+	}
+	
+	this.getProperty = function(name){
+		if(config.hasOwnProperty(name))
+			return config[name];
+	}
+}
+
+Widget.ScrollArea = function(){
+	var allocation = [0,0,0,0];
+	var widget = null;
+	this.setAllocation = function(x, y, width, height){
+		allocation = [x,y,width,height];
+		Object.freeze(allocation);
+		if(widget != null)
+			widget.setAllocation(x,y,width,height);
+	}
+	
+	this.getAllocation = function(){
+		return allocation;
+	}
+	
+	this.redraw = function(){
+		clearRect(allocation[0], allocation[1], allocation[2], allocation[3]);
+		process.stdout.write('\033[?69h\033[?7l\033['+(allocation[0]+1)+';'+(allocation[0]+allocation[2]-1)+'s');
+		if(widget != null)
+			widget.redraw();
+		process.stdout.write('\033[?69l\033[?7h');
+	}
+	
+	this.pack = function(_widget){
+		widget = _widget;
+	}
+	
+	this.unpack = function(){
+		widget = null;
+	}
+}
+
+Widget.TextArea = function(){
+	var allocation = [0,0,0,0];
+	var text = [];
+	
+	this.setAllocation = function(x, y, width, height){
+		allocation = [x,y,width,height];
+		Object.freeze(allocation);
+	}
+	
+	this.getAllocation = function(){
+		return allocation;
+	}
+	
+	this.redraw = function(){
+		var out = [];
+		for(var i =  0 ;text.length;i++){
+			if(i>=allocation[3])break;
+			out.push('\033['+(allocation[1]+i)+';'+allocation[0]+'H');
+			out.push(text[i]);
+		}
+		process.stdout.write(out.join(''));
+	}
+	
+	this.setText = function(_text){
+		text = _text.split('\n');
+		
 	}
 }
 
