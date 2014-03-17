@@ -1,0 +1,81 @@
+<!DOCTYPE>
+<html>
+<head>
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+	<script src="http://code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+	<link rel="stylesheet" type="text/css" href="style.css"/>
+</head>
+<script>
+var quiz = null;
+
+function createQuiz(data){
+	quiz = data;
+
+	var v = [];
+	for(var key in data){
+		$('#left').append($('<li>'+key+'</li>'));
+		v.push([Math.random(), data[key]]);
+	}
+	
+	v.sort();
+	for(var i=0;i<v.length;i++)
+		$('#right').append($('<li>'+v[i][1]+'</li>'));
+
+	$( "#right" ).sortable();
+    $( "#right" ).disableSelection();
+    $( "#left" ).disableSelection();
+}
+
+function check(){
+	var que = [], ans = [];
+	$('#left').children().each(function(){
+		que.push($(this).text());
+	});
+	
+	$('#right').children().each(function(){
+		ans.push($(this).text());
+	});
+	
+	$('#left').children().each(function(i){
+		if(quiz[que[i]] == ans[i]){
+			ans[i] = true;
+			$(this).addClass('ok');$(this).removeClass('wrong');
+		}else{
+			$(this).addClass('wrong');$(this).removeClass('ok');
+			ans[i] = false;
+		}
+	});
+	
+	$('#right').children().each(function(i){
+		if(ans[i]){
+			$(this).addClass('ok');$(this).removeClass('wrong');
+		}else{
+			$(this).addClass('wrong');$(this).removeClass('ok');
+		}
+	});
+	
+	console.log(que, ans);
+	
+}
+
+$(function(){
+	createQuiz({
+		'grass' : 'green',
+		'sky'   : 'blue',
+		'snow'  : 'white',
+		'coal'  : 'black',
+		'orange': 'orange',
+		'wood'  : 'brown'
+	});
+});
+</script>
+<body>
+<div id="quiz">
+	<h2 style="margin:6px 0">QUIZ</h2>
+	<ul id="left"></ul>
+	<ul id="right"></ul>
+	<hr style="clear:both"/>
+	<button onclick="check()">Check</button>
+</div>
+</body>
+</html>
