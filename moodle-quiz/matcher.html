@@ -17,28 +17,28 @@
 
 #left li:after{content:"";display:block;width:10px;height:10px;border:4px solid black;position:absolute;top:calc(50% - 9px);border-radius:10px;right:-10px;background:white;}
 
-#left li:nth-child(5n+1){background:#DF151A;color:white;}
-#left li:nth-child(5n+1):after{border-color:#DF151A !important;}
+#left li:nth-child(5n+1), .c1{background:#DF151A !important;color:white !important;}
+#left li:nth-child(5n+1):after, .c1:before{border-color:#DF151A !important;}
 
-#left li:nth-child(5n+2){background:#FD8603;}
-#left li:nth-child(5n+2):after{border-color:#FD8603 !important;}
+#left li:nth-child(5n+2), .c2{background:#FD8603 !important;}
+#left li:nth-child(5n+2):after, .c2:before{border-color:#FD8603 !important;}
 
-#left li:nth-child(5n+3){background:#F4F328;}
-#left li:nth-child(5n+3):after{border-color:#F4F328 !important;}
+#left li:nth-child(5n+3), .c3{background:#F4F328 !important;}
+#left li:nth-child(5n+3):after, .c3:before{border-color:#F4F328 !important;}
 
-#left li:nth-child(5n+4){background:#00DA3C;color:white;}
-#left li:nth-child(5n+4):after{border-color:#00DA3C !important;}
+#left li:nth-child(5n+4), .c4{background:#00DA3C !important;color:white !important;}
+#left li:nth-child(5n+4):after, .c4:before{border-color:#00DA3C !important;}
 
-#left li:nth-child(5n+5){background:#00CBE7;color:white;}
-#left li:nth-child(5n+5):after{border-color:#00CBE7 !important;}
+#left li:nth-child(5n+5), .c5{background:#00CBE7 !important;color:white !important;}
+#left li:nth-child(5n+5):after, .c5:before{border-color:#00CBE7 !important;}
 
 #right li{background:#eee;text-align:left;padding-left:14px;}
 #right li:before{content:"";display:block;width:10px;height:10px;border:4px solid #ddd;position:absolute;top:calc(50% - 9px);border-radius:10px;left:-12px;background:white;}
 
-#quiz{border:1px solid black;display:inline-block;position:relative;}
+#quiz{border:1px solid black;display:inline-block;position:relative;margin:0 auto;margin-top:40px;}
 
 #links{width:140px;height:100%;height:260px;}
-
+body{text-align:center;}
 li:first-child{margin-top:6px !important; }
 li:last-child{margin-bottom:6px !important;}
 </style>
@@ -59,6 +59,7 @@ function clearLines(a, b){
 			if(linesR[i] == linesL[a]){
 				linesL[a].remove();
 				linesL[a] = linesR[i] = undefined;
+				$('#right li:nth-child('+(i+1)+')').attr('class', '');
 				break;
 			}
 	}
@@ -67,6 +68,7 @@ function clearLines(a, b){
 		for(var i=0;i<linesL.length;i++)
 			if(linesR[b] == linesL[i]){
 				linesL[i].remove();
+				$('#right li:nth-child('+(b+1)+')').attr('class', '');
 				linesL[i] = linesR[b] = undefined;
 				break;
 			}
@@ -78,6 +80,8 @@ function match(a, b){
 	var step = 100.0/linesL.length;
 	
 	clearLines(a,b);
+	//$('#right li:nth-child('+(b+1)+')').css('background', colors[a]);
+	$('#right li:nth-child('+(b+1)+')').attr('class', 'c'+((a%5)+1));
 	
 	var l = svg.line(0, parseInt(a*step+0.5*step)+'%', '100%', parseInt(b*step+0.5*step)+'%').stroke({width: 4, color: colors[a%5]});
 	linesL[a] = linesR[b] = l;
@@ -143,10 +147,11 @@ function createMatch(data){
 		if(tmpline != undefined)
 			tmpline.remove();
 		var c = document.getElementById('links');
+		var d = document.getElementById('quiz');
 		var step = 100.0/linesR.length;
 			
-		var tx = e.clientX-c.offsetLeft, ty = e.clientY-c.offsetTop;
-		
+		var tx = e.clientX+document.body.scrollLeft-d.offsetLeft-c.offsetLeft, ty = e.clientY+document.body.scrollTop-d.offsetTop-c.offsetTop;
+		console.log(tx, ty);
 		if(left != undefined){
 			
 			//var tx = -e.offsetX+c.offsetLeft, ty = e.offsetY-c.offsetTop
@@ -169,7 +174,6 @@ function check(){
 	for(var i = 0; i < lKey.length; i++)if(linesL[i] != undefined)
 		for(var j=0; j < rKey.length; j++)if(linesR[j] != undefined)
 			if(linesL[i] == linesR[j]){
-				//console.log(lKey[i],' == ',rKey[j]);
 				if(currentQuiz[lKey[i][1]] == rKey[j][1])
 					score ++;
 			}
@@ -178,18 +182,27 @@ function check(){
 
 
 $(function(){
-	createMatch({
+	/*createMatch({
 		'2*5+10' : '20',
 		'2*2*2'  : '8',
 		'3-1*5'  : '-2',
 		'(1-2)*(5+9)': '-14',
 		'5!'     : '120'
+	});*/
+	
+	createMatch({
+		'Pythagorean':'theorem',
+		'Zorn\'s' : 'lemma',
+		'Peano' : 'axioms',
+		'Vandermonde\'s' : 'identity',
+		'Pigeonhole' : 'principle',
+		
 	});
 });
 </script>
 </head>
 <body>
 
-<div id="quiz"><h2 style="margin:10px 0;text-align:center">Matching Quiz</h2><ul id="left"></ul><div id="links"></div><ul id="right"></ul><br/><button onclick="check()">check</button></div>
+<div id="quiz"><h2 style="margin:10px 0;text-align:center">Matching Quiz</h2><ul id="left"></ul><div id="links"></div><ul id="right"></ul><br/><button onclick="check()" style="margin:15px auto;display:block">check</button></div>
 </body>
 </html>
