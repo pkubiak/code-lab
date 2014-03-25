@@ -1,0 +1,19 @@
+{
+    "content_scripts": [ {
+        "exclude_globs":    [  ],
+        "include_globs":    [ "*" ],
+        "js":               [ "satori.user.js" ],
+        "matches":          [   "http://satori.tcs.uj.edu.pl/contest/*/results/*",
+                                "https://satori.tcs.uj.edu.pl/contest/*/results/*"
+                            ],
+        "run_at": "document_end"
+    } ],
+    "converted_from_user_script": true,
+    "description":  "Satori colorize!",
+    "name":         "satori",
+    "manifest_version": 2,
+    "version" : "1.0",
+    "permissions": [
+		"tabs", "http://*/*", "https://*/*", "clipboardWrite", "clipboardRead"
+	]
+}
