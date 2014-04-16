@@ -3,11 +3,12 @@
 #TODO: make it work on old terminals
 #TODO: block user key press showing
 #TODO: add option for colors change
-
+#TODO: add support for 256colors
+#FIXME: xfce-terminal produce some artifacts with unicode glyphs
 import time, os, sys, signal
-import argparse, re
+import argparse, re, math
 
-#add more glyphs
+#TODO: add more glyphs
 font = {
     '-': 208896,
     '1': 242966918,
@@ -20,7 +21,6 @@ font = {
     '6': 1069808895,
     '9': 1070592255,
     '8': 516811998,
-    #':': 3146496,
     ':':[
     "    ",
     " xx ",
@@ -34,6 +34,120 @@ font = {
     "    ",
     " xx "]
 }
+
+class Canvas():
+
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+        self._canvas = []
+        for i in xrange(height):
+            self._canvas.append([-1]*width)
+
+    def putpixel(self, x, y, color):
+        if 0 <= x < self.width and 0 <= y < self.height and -1 <= color < 8:
+            self._canvas[y][x] = color
+
+    def _ellipse_points(self, x0, y0, x, y, color):
+        self.putpixel(x0+x,y0+y,color)
+        self.putpixel(x0+x,y0-y,color)
+        self.putpixel(x0-x,y0+y,color)
+        self.putpixel(x0-x,y0-y,color)
+
+    def draw_circle(self, x0, y0, r, color, width = 1):
+        """
+            Bresenham circle algorithm:
+            According to http://wm.ite.pl/articles/bresenham.js
+        """
+        #TODO: add support for circle width
+
+        d, x, y = 5-4*r, 0, r
+        deltaA = (-2*r + 5)*4
+        deltaB = 3*4
+
+        while x<=y:
+            self._ellipse_points(x0,y0,x,y,color)
+            self._ellipse_points(x0,y0,y,x,color)
+            if d > 0:
+                d += deltaA
+                y -= 1
+                x += 1
+                deltaA += 4*4
+                deltaB += 2*2
+            else:
+                d += deltaB
+                x += 1
+                deltaA += 2*4
+                deltaB += 2*4
+
+    def draw_line(self, x0, y0, x1, y1, color, width = 1):
+        #TODO: add support for line width
+        dx, dy = x1-x0, y1-y0
+        inc_x = 1 if dx>=1 else -1
+        inc_y = 1 if dy>=1 else -1
+
+        dx, dy = abs(dx), abs(dy)
+
+        if dx >= dy:
+            d = 2*dy - dx
+            delta_A = 2*dy
+            delta_B = 2*dy - 2*dx
+            x, y = 0, 0
+            for i in xrange(dx+1):
+                self.putpixel(x+x0, y+y0, color)
+                if d > 0:
+                    d += delta_B
+                    x += inc_x
+                    y += inc_y
+                else:
+                    d += delta_A
+                    x += inc_x
+        else:
+            d = 2*dx - dy
+            delta_A = 2*dx
+            delta_B = 2*dx - 2*dy
+            x, y = 0, 0
+            for i in xrange(dy+1):
+                self.putpixel(x+x0, y+y0, color)
+                if d > 0:
+                    d += delta_B
+                    x += inc_x
+                    y += inc_y
+                else:
+                    d += delta_A
+                    y += inc_y
+
+    def put_text(self, x0, y0, text, color):
+        pass
+
+    def render(self, swidth, sheight, diff = False):
+        #TODO: render only diff between last render
+        #TODO: optimize amounth of escape sequence
+        c = unichr(9600+5)
+        res = []
+        for y in xrange((self.height+1)/2):
+            line = [goto((swidth-self.width)//2, (sheight-(self.height+1)/2)/2+y)]
+            for x in xrange(self.width):
+                a = self._canvas[2*y][x]
+                b = self._canvas[2*y+1][x] if 2*y+1 < self.height else -1
+
+                #TODO: add support for transparence
+                #m = []
+                #if a == -1 or b == -1:
+                #    m.append('0')
+                #if a != -1: m.append(str(30+a))
+                #if b != -1: m.append(str(40+a))
+                #line.append('\033['+';'.join(m)+'m'+c)
+                a = 0 if a == -1 else a
+                b = 0 if b == -1 else b
+                line.append('\033['+str(30+b)+';'+str(40+a)+'m'+c)
+
+            res.append(''.join(line))
+
+        sys.stdout.write(''.join(res))
+        sys.stdout.flush()
+
+
 
 def decode_font():
     global font
@@ -147,11 +261,16 @@ def show_alarm (freq = 0.5):
 
         time.sleep(freq)
 
-def show_clock():
+def show_clock(ms = False):
     while True:
         ct = time.time()
-        printText(time.strftime('%H:%M:%S'), width, (height-5)//2)
-        time.sleep(0.499)
+        if ms:
+            m = int(100*(ct%1))
+            printText(time.strftime('%H:%M:%S', time.localtime(ct))+'.'+(str(m).zfill(2)), width, (height-5)//2)
+            time.sleep(0.08)
+        else:
+            printText(time.strftime('%H:%M:%S', time.localtime(ct)), width, (height-5)//2)
+            time.sleep(0.499)
         
 def show_pomodoro(progress = True, ms = False):
     while True:
@@ -168,6 +287,41 @@ def show_stopwatch(ms = True):
         printTime(ct-st, width, (height-5)//2, ms = ms)
         time.sleep(0.08)
     
+def show_visual(sec = False, radius = 39):
+    c = Canvas(2*radius+1, 2*radius+1)
+    x = 0
+    while True:
+        t = time.localtime()
+
+        c.draw_circle(radius,radius,radius,1)
+        c.draw_circle(radius,radius,radius-1,1)
+        for i in xrange(12):
+            dx = math.sin(2.0*math.pi*i/12)
+            dy = math.cos(2.0*math.pi*i/12)
+            if i%3 == 0:
+                c.draw_line(radius+int(dx*radius), radius-int(dy*radius), radius+int(0.8*dx*radius), radius-int(0.8*dy*radius),1)
+            else:
+                c.draw_line(radius+int(dx*radius), radius-int(dy*radius), radius+int(0.9*dx*radius), radius-int(0.9*dy*radius),1)
+
+        G = [((t[3]%12), 12, 0.4, 2), (t[4], 60, 0.6, 3), (t[5], 60, 0.8, 4)]
+        for gnomon in G:
+            dx = math.sin(2.0*math.pi*gnomon[0]/gnomon[1])
+            dy = math.cos(2.0*math.pi*gnomon[0]/gnomon[1])
+
+            c.draw_line(radius, radius, radius+int(dx*gnomon[2]*radius), radius-int(dy*gnomon[2]*radius), gnomon[3])
+            c.draw_line(radius, radius, radius-int(dx*gnomon[2]*radius/4), radius+int(dy*gnomon[2]*radius/4), gnomon[3])
+
+        c.render(width, height)
+        time.sleep(1)
+
+        for gnomon in G:
+            dx = math.sin(2.0*math.pi*gnomon[0]/gnomon[1])
+            dy = math.cos(2.0*math.pi*gnomon[0]/gnomon[1])
+
+            c.draw_line(radius, radius, radius+int(dx*gnomon[2]*radius), radius-int(dy*gnomon[2]*radius), 0)
+            c.draw_line(radius, radius, radius-int(dx*gnomon[2]*radius/4), radius+int(dy*gnomon[2]*radius/4), 0)
+
+
 
 def dbbuffer(f):
     try:
@@ -188,11 +342,13 @@ parser = argparse.ArgumentParser(description='Clock in terminal')
 
 parser.add_argument('-t', '--timer', dest = 'timer', help ='Countdown some time', default=None, type=str)
 parser.add_argument('-c', '--clock', dest = 'clock', help = 'Show current time', action = 'store_true')
+parser.add_argument('-b', '--binary', dest = 'binary', help = 'Show current time in binary', action = 'store_true')
 parser.add_argument('-p', '--pomodoro', dest = 'pomodoro', help = 'Start pomodoro session', action='store_true')
 parser.add_argument('-s', '--stopwatch', dest = 'stopwatch', help = 'Start stopwatch', action='store_true')
 parser.add_argument('-n', '--no-progress', dest = 'progress', help ='Hide progressbar', action='store_false')
 parser.add_argument('-a', '--alarm', dest = 'alarm', help = 'Show visual alarm on ...', action='store_true')
 parser.add_argument('-m', '--miliseconds', dest = 'ms', help ='Count with resolution to 1/100 s', action='store_true')
+parser.add_argument('-g', '--graphical', dest = 'visual', help = 'Display visual clock', action = 'store_true')
 
 args = parser.parse_args()
 
@@ -215,8 +371,11 @@ try:
         dbbuffer(lambda: show_stopwatch(ms = args.ms))
         
     elif args.clock == True:
-        dbbuffer(lambda: show_clock())
-        
+        dbbuffer(lambda: show_clock(ms = args.ms))
+    elif args.binary == True:
+        pass
+    elif args.visual == True:
+        dbbuffer(lambda: show_visual())
     else:
         parser.print_help()
 
